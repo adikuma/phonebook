@@ -1,17 +1,24 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 from pydantic import BaseModel, HttpUrl
 import uvicorn
 import asyncio
-
+from fastapi.middleware.cors import CORSMiddleware
 from .agents import company_agent, person_agent, news_agent
 from .schemas import CompanyProfile, PersonProfile, NewsDigest
 
-app = FastAPI(title="Sales Intelligence API")
+load_dotenv()
+
+
+app = FastAPI(title="Phonebook API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://phonebook-mocha-eight.vercel.app",
+        "http://localhost:3000",
+        "*",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

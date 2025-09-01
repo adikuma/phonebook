@@ -7,14 +7,13 @@ import {
   ExternalLink,
   Calendar,
   Clock,
-  Target,
-  Star,
   BarChart2,
   Newspaper,
+  Award,
 } from 'lucide-react';
 
-const API_BASE =
-  import.meta?.env?.VITE_API_BASE || 'https://phonebook-qsal.onrender.com';
+const API_BASE = import.meta?.env?.VITE_API_BASE || 'http://localhost:8000';
+const PASS_PHRASE = import.meta?.env?.VITE_PASS_PHRASE || 'PASSWORD';
 
 const scrollToBottom = (el) => {
   if (!el) return;
@@ -26,7 +25,6 @@ const getDomain = (url) => {
     const u = new URL(url);
     return (u.hostname || '').replace(/^www\./, '');
   } catch {
-    // fallback
     return (url || '').replace(/^https?:\/\//, '').split('/')[0];
   }
 };
@@ -284,32 +282,6 @@ function NewsDigestView({ digest }) {
         </p>
       </div>
 
-      {digest.overall_summary && (
-        <p className="text-sm mb-4 text-neutral-200">
-          {digest.overall_summary}
-        </p>
-      )}
-
-      {Array.isArray(digest.top_takeaways) &&
-        digest.top_takeaways.length > 0 && (
-          <div className="mb-4">
-            <h3 className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
-              Top Takeaways
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {digest.top_takeaways.map((t, i) => (
-                <span
-                  key={i}
-                  className="border border-neutral-700 px-2 py-1 text-xs text-neutral-200"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-      {/* cards grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {articles.slice(0, 8).map((a, i) => {
           const domain = getDomain(a.url);
@@ -350,7 +322,6 @@ function NewsDigestView({ digest }) {
         })}
       </div>
 
-      {/* citations (small) */}
       {Array.isArray(digest.citations) && digest.citations.length > 0 && (
         <div className="mt-4">
           <h3 className="text-xs uppercase tracking-wide text-neutral-400 mb-1">
@@ -375,10 +346,10 @@ function NewsDigestView({ digest }) {
   );
 }
 
-function App() {
+function ChatApp() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [mode, setMode] = useState('company'); // company | person | news
+  const [mode, setMode] = useState('company');
   const [loadingId, setLoadingId] = useState(null);
 
   const scrollRef = useRef(null);
@@ -417,7 +388,9 @@ function App() {
 
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error('API error');
@@ -491,7 +464,6 @@ function App() {
   return (
     <div className="h-screen overflow-hidden bg-black text-white font-poppins flex justify-center">
       <div className="w-full max-w-2xl h-full flex flex-col px-4">
-        {/* thread (scrolls) */}
         <div
           ref={scrollRef}
           className={
@@ -512,7 +484,6 @@ function App() {
           )}
         </div>
 
-        {/* composer */}
         <div
           className={`${
             isInitial ? 'my-auto' : 'sticky bottom-0'
@@ -608,4 +579,74 @@ function App() {
   );
 }
 
-export default App;
+function Gate({ children }) {
+  const [value, setValue] = useState('');
+  const [err, setErr] = useState('');
+  const [ok, setOk] = useState(
+    typeof window !== 'undefined' &&
+      window.sessionStorage.getItem('phonebook_authed') === 'true',
+  );
+
+  const onSubmit = (e) => {
+    e.preventDefault();
+    setErr('');
+    const pass = value.trim();
+    if (!pass) {
+      setErr('Passphrase is required');
+      return;
+    }
+    if (pass !== PASS_PHRASE) {
+      setErr('Incorrect passphrase');
+      return;
+    }
+    window.sessionStorage.setItem('phonebook_authed', 'true');
+    setOk(true);
+  };
+
+  if (ok) return children;
+
+  return (
+    <div className="h-screen bg-black text-white font-poppins flex items-center justify-center px-4">
+      <form onSubmit={onSubmit} className="w-full max-w-sm border border-neutral-800 p-5">
+        <h1 className="text-lg mb-4">Enter passphrase</h1>
+        <input
+          autoFocus
+          type="password"
+          className={`w-full px-3 py-2 bg-black border ${
+            err ? 'border-red-600' : 'border-neutral-700'
+          } text-white focus:outline-none mb-3 placeholder-neutral-500`}
+          placeholder="Enter the secret passphrase"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        <button
+          type="submit"
+          className="w-full border border-neutral-700 hover:border-neutral-500 px-3 py-2 text-sm"
+        >
+          Continue
+        </button>
+        <div className="h-5 mt-2">
+          {err ? (
+            <div
+              role="alert"
+              className="text-xs text-red-500"
+              aria-live="assertive"
+            >
+              {err}
+            </div>
+          ) : (
+            <p className="text-[11px] text-neutral-500">Session-only.</p>
+          )}
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Gate>
+      <ChatApp />
+    </Gate>
+  );
+}
