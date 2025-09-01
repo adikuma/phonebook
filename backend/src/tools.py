@@ -1,11 +1,11 @@
-from typing import List, Dict, Any, Type
+from typing import List, Dict, Any, Type, Optional
 from pydantic import BaseModel
 import asyncio
 from exa_py import Exa
 from tavily import TavilyClient
 import re
 from .config import config
-
+from .schemas import NewsDigest
 from google import genai
 
 client = genai.Client(api_key=config.gemini_api_key)
@@ -249,3 +249,82 @@ def _format_content(content: Any) -> str:
         except Exception:
             return str(content)
     return str(content)
+
+
+# news tools
+async def news_search(
+    topic: str,
+    days: int = 7,
+    source: Optional[str] = None,
+    max_results: int = 8,
+) -> List[Dict[str, Any]]:
+    base = f"{topic} news past {days} days"
+    queries = [base, f"latest updates {topic}", f"{topic} headlines"]
+
+    if source:
+        queries.append(f"site:{source} {topic} past {days} days")
+
+    all_results: List[Dict[str, Any]] = []
+    seen: set[str] = set()
+
+    # sequential to respect rate limits
+    per_q = max(3, max_results // max(1, len(queries)))
+    for q in queries:
+        try:
+            rows = await search_web(q, max_results=per_q)
+            for r in rows:
+                u = r.get("url")
+                if u and u not in seen:
+                    seen.add(u)
+                    all_results.append(r)
+            await asyncio.sleep(0.25)
+        except Exception as e:
+            print(f"news_search error: {e}")
+
+    return all_results[:max_results]
+
+
+async def summarize_news(
+    topic: str,
+    mode: str,
+    results: List[Dict[str, Any]],
+) -> NewsDigest:
+    mode_desc = {
+        "briefing": "Concise daily briefing with 4-6 sentence overview and bullets.",
+        "fun_fact": "Return 1-3 quirky, surprising facts with short context.",
+        "single_source": "Summarize from a specific source if present; otherwise do a briefing.",
+    }.get(mode, "Concise daily briefing with 4-6 sentence overview and bullets.")
+
+    content = _format_results(results)
+
+    from .schemas import NewsDigest as _NewsDigest
+
+    json_schema = clean_schema(_NewsDigest.model_json_schema())
+
+    prompt = f"""
+    You are a news analyst. Topic: "{topic}".
+    Mode: {mode} -> {mode_desc}
+
+    From the web results below, select up to 8 strong articles,
+    summarize each (1-2 sentences), extract 3-5 key points,
+    and produce an overall summary + top takeaways.
+    Include citations (the article URLs you relied on).
+    If publish dates are obvious in the content, include them as strings.
+
+    Results:
+    {content}
+    """
+
+    resp = await asyncio.to_thread(
+        client.models.generate_content,
+        model=config.gemini_model,
+        contents=prompt,
+        config={
+            "response_mime_type": "application/json",
+            "response_schema": json_schema,
+        },
+    )
+    parsed: _NewsDigest = _NewsDigest.model_validate_json(resp.text)
+    parsed.topic = topic
+    parsed.mode = mode
+    return parsed

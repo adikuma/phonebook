@@ -4,19 +4,42 @@ import {
   Building2,
   User,
   Globe,
-  MapPin,
-  Users,
+  ExternalLink,
   Calendar,
+  Clock,
   Target,
   Star,
-  Award,
-  Clock,
   BarChart2,
+  Newspaper,
 } from 'lucide-react';
+
+const API_BASE =
+  import.meta?.env?.VITE_API_BASE || 'https://phonebook-qsal.onrender.com';
 
 const scrollToBottom = (el) => {
   if (!el) return;
   el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+};
+
+const getDomain = (url) => {
+  try {
+    const u = new URL(url);
+    return (u.hostname || '').replace(/^www\./, '');
+  } catch {
+    // fallback
+    return (url || '').replace(/^https?:\/\//, '').split('/')[0];
+  }
+};
+
+const formatDate = (s) => {
+  if (!s) return '';
+  try {
+    const d = new Date(s);
+    if (isNaN(+d)) return s;
+    return d.toLocaleDateString();
+  } catch {
+    return s;
+  }
 };
 
 function Row({ icon, label, children }) {
@@ -46,34 +69,6 @@ function Bullets({ items }) {
   );
 }
 
-function IconBullets({ items, icon: Icon }) {
-  return (
-    <ul className="space-y-1">
-      {items.map((t, i) => (
-        <li key={i} className="flex items-start text-sm">
-          <Icon size={14} className="mr-2 mt-0.5 text-neutral-300" />
-          <span>{t}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Chips({ items }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {items.map((t, i) => (
-        <span
-          key={i}
-          className="border border-neutral-700 px-2 py-1 text-xs text-neutral-200"
-        >
-          {t}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function CompanyProfile({ data }) {
   return (
     <div className="font-poppins text-white">
@@ -91,12 +86,12 @@ function CompanyProfile({ data }) {
           </h2>
           <div className="space-y-2">
             {data.industry && (
-              <Row icon={<Building2 size={16} />} label="Industry">
+              <Row icon={<BarChart2 size={16} />} label="Industry">
                 {data.industry}
               </Row>
             )}
             {data.headquarters && (
-              <Row icon={<MapPin size={16} />} label="Headquarters">
+              <Row icon={<Globe size={16} />} label="Headquarters">
                 {data.headquarters}
               </Row>
             )}
@@ -113,7 +108,7 @@ function CompanyProfile({ data }) {
               </Row>
             )}
             {data.employee_count && (
-              <Row icon={<Users size={16} />} label="Employees">
+              <Row icon={<User size={16} />} label="Employees">
                 {data.employee_count}
               </Row>
             )}
@@ -141,7 +136,16 @@ function CompanyProfile({ data }) {
               <h2 className="text-sm font-medium tracking-wide uppercase mb-3 text-neutral-300">
                 Target Markets
               </h2>
-              <Chips items={data.target_markets} />
+              <div className="flex flex-wrap gap-2">
+                {data.target_markets.map((t, i) => (
+                  <span
+                    key={i}
+                    className="border border-neutral-700 px-2 py-1 text-xs text-neutral-200"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
             </section>
           )}
 
@@ -166,61 +170,6 @@ function CompanyProfile({ data }) {
               </div>
             </section>
           )}
-
-        {Array.isArray(data.recent_news) && data.recent_news.length > 0 && (
-          <section className="border-b border-neutral-800 pb-4">
-            <h2 className="text-sm font-medium tracking-wide uppercase mb-3 text-neutral-300">
-              Recent News
-            </h2>
-            <ul className="space-y-2">
-              {data.recent_news.map((n, i) => (
-                <li key={i} className="flex items-start text-sm">
-                  <Clock size={14} className="mr-2 mt-0.5" />
-                  <span>{n}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {data.recent_funding && (
-          <section className="border-b border-neutral-800 pb-4">
-            <h2 className="text-sm font-medium tracking-wide uppercase mb-3 text-neutral-300">
-              Recent Funding
-            </h2>
-            <p className="text-sm">{data.recent_funding}</p>
-          </section>
-        )}
-
-        <section className="border-b border-neutral-800 pb-4">
-          <h2 className="text-sm font-medium tracking-wide uppercase mb-3 text-neutral-300">
-            Sales Intelligence
-          </h2>
-          {Array.isArray(data.pain_points) && data.pain_points.length > 0 && (
-            <div className="mb-3">
-              <h3 className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
-                Pain Points
-              </h3>
-              <IconBullets items={data.pain_points} icon={BarChart2} />
-            </div>
-          )}
-          {Array.isArray(data.talking_points) &&
-            data.talking_points.length > 0 && (
-              <div>
-                <h3 className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
-                  Talking Points
-                </h3>
-                <IconBullets items={data.talking_points} icon={Star} />
-              </div>
-            )}
-        </section>
-      </div>
-
-      <div className="mt-4 text-[11px] text-neutral-500 flex items-center">
-        <Clock size={12} className="mr-1" />
-        <span>
-          Last updated: {new Date(data.last_updated).toLocaleDateString()}
-        </span>
       </div>
     </div>
   );
@@ -253,7 +202,7 @@ function PersonProfile({ data }) {
               </Row>
             )}
             {data.location && (
-              <Row icon={<MapPin size={16} />} label="Location">
+              <Row icon={<Globe size={16} />} label="Location">
                 {data.location}
               </Row>
             )}
@@ -263,103 +212,17 @@ function PersonProfile({ data }) {
               </Row>
             )}
           </div>
-
-          {Array.isArray(data.responsibilities) &&
-            data.responsibilities.length > 0 && (
-              <div className="mt-3">
-                <h3 className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
-                  Responsibilities
-                </h3>
-                <Bullets items={data.responsibilities} />
-              </div>
-            )}
         </section>
 
-        <section className="border-b border-neutral-800 pb-4">
-          <h2 className="text-sm font-medium tracking-wide uppercase mb-3 text-neutral-300">
-            Background
-          </h2>
-          {Array.isArray(data.previous_companies) &&
-            data.previous_companies.length > 0 && (
-              <div className="mb-3">
-                <h3 className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
-                  Previous Experience
-                </h3>
-                <div className="space-y-2">
-                  {data.previous_companies.map((exp, i) => (
-                    <div key={i} className="flex items-start text-sm">
-                      <Building2 size={14} className="mr-2 mt-0.5" />
-                      <div>
-                        <p>{exp.company}</p>
-                        <p className="text-neutral-400 text-xs">{exp.role}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          {Array.isArray(data.education) && data.education.length > 0 && (
-            <div>
-              <h3 className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
-                Education
-              </h3>
-              <Bullets items={data.education} />
-            </div>
+        {Array.isArray(data.responsibilities) &&
+          data.responsibilities.length > 0 && (
+            <section className="border-b border-neutral-800 pb-4">
+              <h2 className="text-sm font-medium tracking-wide uppercase mb-3 text-neutral-300">
+                Responsibilities
+              </h2>
+              <Bullets items={data.responsibilities} />
+            </section>
           )}
-        </section>
-
-        <section className="border-b border-neutral-800 pb-4">
-          <h2 className="text-sm font-medium tracking-wide uppercase mb-3 text-neutral-300">
-            Skills & Interests
-          </h2>
-          {Array.isArray(data.skills) && data.skills.length > 0 && (
-            <div className="mb-3">
-              <h3 className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
-                Skills
-              </h3>
-              <Chips items={data.skills} />
-            </div>
-          )}
-          {Array.isArray(data.interests) && data.interests.length > 0 && (
-            <div>
-              <h3 className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
-                Interests
-              </h3>
-              <Bullets items={data.interests} />
-            </div>
-          )}
-        </section>
-
-        <section className="border-b border-neutral-800 pb-4">
-          <h2 className="text-sm font-medium tracking-wide uppercase mb-3 text-neutral-300">
-            Engagement Insights
-          </h2>
-          {Array.isArray(data.conversation_starters) &&
-            data.conversation_starters.length > 0 && (
-              <div className="mb-3">
-                <h3 className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
-                  Conversation Starters
-                </h3>
-                <IconBullets items={data.conversation_starters} icon={Star} />
-              </div>
-            )}
-          {Array.isArray(data.engagement_tips) &&
-            data.engagement_tips.length > 0 && (
-              <div>
-                <h3 className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
-                  Engagement Tips
-                </h3>
-                <IconBullets items={data.engagement_tips} icon={Target} />
-              </div>
-            )}
-        </section>
-      </div>
-
-      <div className="mt-4 text-[11px] text-neutral-500 flex items-center">
-        <Clock size={12} className="mr-1" />
-        <span>
-          Last updated: {new Date(data.last_updated).toLocaleDateString()}
-        </span>
       </div>
     </div>
   );
@@ -382,10 +245,140 @@ function LoaderBubble() {
   );
 }
 
+function SiteBadge({ url }) {
+  const domain = getDomain(url);
+  const src = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+  const [err, setErr] = useState(false);
+
+  return (
+    <span className="inline-flex items-center gap-2">
+      {err ? (
+        <Globe size={14} className="text-neutral-400" />
+      ) : (
+        <img
+          src={src}
+          alt={domain}
+          className="h-4 w-4"
+          onError={() => setErr(true)}
+        />
+      )}
+      <span className="text-xs text-neutral-400">{domain || 'source'}</span>
+    </span>
+  );
+}
+
+function NewsDigestView({ digest }) {
+  if (!digest) return null;
+
+  const articles = Array.isArray(digest.articles) ? digest.articles : [];
+
+  return (
+    <div className="text-white">
+      <div className="border-b border-neutral-800 pb-3 mb-4">
+        <h2 className="text-base font-semibold">
+          {digest.topic}{' '}
+          <span className="text-xs text-neutral-400">({digest.mode})</span>
+        </h2>
+        <p className="text-xs text-neutral-500">
+          Generated {formatDate(digest.generated_at)}
+        </p>
+      </div>
+
+      {digest.overall_summary && (
+        <p className="text-sm mb-4 text-neutral-200">
+          {digest.overall_summary}
+        </p>
+      )}
+
+      {Array.isArray(digest.top_takeaways) &&
+        digest.top_takeaways.length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-xs uppercase tracking-wide text-neutral-400 mb-2">
+              Top Takeaways
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {digest.top_takeaways.map((t, i) => (
+                <span
+                  key={i}
+                  className="border border-neutral-700 px-2 py-1 text-xs text-neutral-200"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+      {/* cards grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {articles.slice(0, 8).map((a, i) => {
+          const domain = getDomain(a.url);
+          return (
+            <div
+              key={i}
+              className="border border-neutral-800 p-3 flex flex-col gap-2"
+            >
+              <div className="flex items-center justify-between">
+                <SiteBadge url={a.url} />
+                <span className="text-[11px] text-neutral-500">
+                  {formatDate(a.published_at)}
+                </span>
+              </div>
+
+              <a
+                href={a.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm underline inline-flex items-center gap-1"
+                title={domain}
+              >
+                {a.title}
+                <ExternalLink size={14} />
+              </a>
+
+              {a.summary && (
+                <p className="text-sm text-neutral-200">{a.summary}</p>
+              )}
+
+              {Array.isArray(a.key_points) && a.key_points.length > 0 && (
+                <div className="text-neutral-100">
+                  <Bullets items={a.key_points.slice(0, 5)} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* citations (small) */}
+      {Array.isArray(digest.citations) && digest.citations.length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-xs uppercase tracking-wide text-neutral-400 mb-1">
+            Citations
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {digest.citations.slice(0, 8).map((c, i) => (
+              <a
+                key={i}
+                href={c}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] underline text-neutral-400"
+              >
+                {getDomain(c)}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [mode, setMode] = useState('company');
+  const [mode, setMode] = useState('company'); // company | person | news
   const [loadingId, setLoadingId] = useState(null);
 
   const scrollRef = useRef(null);
@@ -410,11 +403,19 @@ function App() {
     setMessages((prev) => [...prev, loaderMsg]);
 
     try {
-      const endpoint = mode === 'company' ? '/company' : '/person';
-      const body = mode === 'company' ? { name: text } : { linkedin_url: text };
+      let endpoint = '/company';
+      let body = { name: text };
 
-      const baseUrl = 'https://phonebook-qsal.onrender.com';
-      const res = await fetch(`${baseUrl}${endpoint}`, {
+      if (mode === 'person') {
+        endpoint = '/person';
+        body = { linkedin_url: text };
+      }
+      if (mode === 'news') {
+        endpoint = '/news';
+        body = { topic: text, mode: 'briefing' };
+      }
+
+      const res = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -422,17 +423,15 @@ function App() {
       if (!res.ok) throw new Error('API error');
 
       const data = await res.json();
-
+      const botMessage = {
+        id: crypto.randomUUID(),
+        sender: 'bot',
+        data,
+        type: mode,
+        text: JSON.stringify(data, null, 2),
+      };
       setMessages((prev) =>
-        prev
-          .filter((m) => m.id !== loaderMsg.id)
-          .concat({
-            id: crypto.randomUUID(),
-            sender: 'bot',
-            data,
-            type: mode,
-            text: JSON.stringify(data, null, 2),
-          })
+        prev.filter((m) => m.id !== loaderMsg.id).concat(botMessage),
       );
       setLoadingId(null);
     } catch (e) {
@@ -443,7 +442,7 @@ function App() {
             id: crypto.randomUUID(),
             sender: 'bot',
             text: 'Error: ' + e.message,
-          })
+          }),
       );
       setLoadingId(null);
     }
@@ -457,19 +456,30 @@ function App() {
         </div>
       );
     }
-    if (m.sender === 'loader') {
-      return <LoaderBubble />;
-    }
+    if (m.sender === 'loader') return <LoaderBubble />;
+
     if (m.data && m.type) {
-      return (
-        <div className="p-4 bg-black border border-neutral-800 text-white self-start w-full overflow-visible">
-          {m.type === 'company' ? (
+      if (m.type === 'company') {
+        return (
+          <div className="p-4 bg-black border border-neutral-800 text-white self-start w-full">
             <CompanyProfile data={m.data} />
-          ) : (
+          </div>
+        );
+      }
+      if (m.type === 'person') {
+        return (
+          <div className="p-4 bg-black border border-neutral-800 text-white self-start w-full">
             <PersonProfile data={m.data} />
-          )}
-        </div>
-      );
+          </div>
+        );
+      }
+      if (m.type === 'news') {
+        return (
+          <div className="p-4 bg-black border border-neutral-800 text-white self-start w-full">
+            <NewsDigestView digest={m.data} />
+          </div>
+        );
+      }
     }
     return (
       <div className="p-3 bg-black border border-neutral-800 text-white self-start">
@@ -522,7 +532,9 @@ function App() {
                 placeholder={
                   mode === 'company'
                     ? 'Enter company name...'
-                    : 'Enter LinkedIn URL...'
+                    : mode === 'person'
+                    ? 'Enter LinkedIn URL...'
+                    : 'Enter news topic...'
                 }
                 rows={3}
                 className="w-full resize-none px-4 py-3 bg-black text-white placeholder-neutral-500 focus:outline-none"
@@ -553,10 +565,29 @@ function App() {
                     <User size={14} className="mr-1" />
                     Person
                   </button>
+                  <button
+                    onClick={() => setMode('news')}
+                    className={`flex items-center px-3 py-1 text-xs ${
+                      mode === 'news'
+                        ? 'bg-white text-black border border-white'
+                        : 'border border-neutral-700 text-neutral-300 hover:border-neutral-500'
+                    }`}
+                    title="News"
+                  >
+                    <Newspaper size={14} className="mr-1" />
+                    News
+                  </button>
                 </div>
 
                 <div className="ml-auto flex items-center">
-                  <span className="text-xs text-neutral-300 mr-2">Phonebook</span>
+                  <span
+                    aria-hidden
+                    className="inline-block h-4 w-4 rounded-full mr-2"
+                    style={{ backgroundColor: '#F5B301' }}
+                  />
+                  <span className="text-xs text-neutral-300 mr-2">
+                    Phonebook
+                  </span>
                   <button
                     onClick={handleSend}
                     className="p-2 border border-neutral-700 hover:border-neutral-500"

@@ -103,3 +103,26 @@ class PersonProfile(BaseModel):
     # metadata
     last_updated: datetime = Field(default_factory=datetime.now)
     profile_completeness: float = Field(ge=0.0, le=1.0, default=0.7)
+
+
+# new schemas
+class NewsItem(BaseModel):
+    title: str
+    url: HttpUrl
+    source: Optional[str] = None
+    published_at: Optional[str] = None
+    summary: Optional[str] = None
+    key_points: List[str] = Field(default_factory=list)
+
+
+class NewsDigest(BaseModel):
+    topic: str
+    mode: str = Field(default="briefing", description="briefing|fun_fact|single_source")
+    generated_at: datetime = Field(default_factory=datetime.now)
+    overall_summary: str = ""
+    top_takeaways: List[str] = Field(default_factory=list)
+    articles: List[NewsItem] = Field(default_factory=list)
+    sentiment: Optional[str] = Field(
+        default=None, description="positive|neutral|negative"
+    )
+    citations: List[str] = Field(default_factory=list)

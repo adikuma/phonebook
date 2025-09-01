@@ -1,7 +1,8 @@
 from langgraph.graph import StateGraph, END
-from typing import TypedDict, List, Dict, Any
-from .schemas import CompanyProfile, PersonProfile
+from typing import TypedDict, List, Dict, Any, Optional
+from .schemas import CompanyProfile, PersonProfile, NewsDigest
 from .tools import search_web, extract_linkedin_data, analyze_content
+from .tools import news_search, summarize_news
 import asyncio
 
 
@@ -18,6 +19,7 @@ class PersonState(TypedDict):
     profile: PersonProfile
 
 
+# company agent
 class CompanyAgent:
     def __init__(self):
         self.graph = self._build_graph()
@@ -25,22 +27,15 @@ class CompanyAgent:
 
     def _build_graph(self):
         graph = StateGraph(CompanyState)
-
-        # nodes
         graph.add_node("search", self._search_company)
         graph.add_node("analyze", self._analyze_company)
-
-        # flow
         graph.set_entry_point("search")
         graph.add_edge("search", "analyze")
         graph.add_edge("analyze", END)
-
         return graph
 
     async def _search_company(self, state: CompanyState) -> CompanyState:
         company = state["company_name"]
-
-        # parallel searches replaced with sequential to avoid rate limits
         searches = [
             search_web(f"{company} company overview profile"),
             search_web(f"{company} latest news"),
@@ -48,13 +43,11 @@ class CompanyAgent:
             search_web(f"{company} leadership team executives"),
             search_web(f"{company} funding revenue"),
         ]
-
         all_results = []
         for s in searches:
             result = await s
             all_results.extend(result)
-            await asyncio.sleep(0.25)  # sleep to respect rate limits
-
+            await asyncio.sleep(0.25)
         state["search_results"] = all_results
         return state
 
@@ -73,6 +66,7 @@ class CompanyAgent:
         return result["profile"]
 
 
+# person agent
 class PersonAgent:
     def __init__(self):
         self.graph = self._build_graph()
@@ -80,18 +74,13 @@ class PersonAgent:
 
     def _build_graph(self):
         graph = StateGraph(PersonState)
-
-        # nodes
         graph.add_node("extract", self._extract_linkedin)
         graph.add_node("search", self._search_person)
         graph.add_node("analyze", self._analyze_person)
-
-        # flow
         graph.set_entry_point("extract")
         graph.add_edge("extract", "search")
         graph.add_edge("search", "analyze")
         graph.add_edge("analyze", END)
-
         return graph
 
     async def _extract_linkedin(self, state: PersonState) -> PersonState:
@@ -103,7 +92,6 @@ class PersonAgent:
         person_name = state["linkedin_data"].get("name", "")
         company = state["linkedin_data"].get("company", "")
 
-        # targeted searches replaced with sequential to avoid rate limits
         searches = [
             search_web(f"{person_name} {company}"),
             search_web(f"{person_name} speaking conferences"),
@@ -113,7 +101,6 @@ class PersonAgent:
             search_web(f"{person_name} skills and expertise"),
             search_web(f"{person_name} linkedin posts 2025"),
         ]
-
         if company:
             searches.append(search_web(f"{person_name} {company} role"))
 
@@ -121,19 +108,15 @@ class PersonAgent:
         for s in searches:
             result = await s
             all_results.extend(result)
-            await asyncio.sleep(0.25)  # sleep to respect rate limits
+            await asyncio.sleep(0.25)
 
         state["search_results"] = all_results
         return state
 
     async def _analyze_person(self, state: PersonState) -> PersonState:
-        combined_data = {
-            "linkedin": state["linkedin_data"],
-            "web": state["search_results"],
-        }
-
+        combined = {"linkedin": state["linkedin_data"], "web": state["search_results"]}
         profile = await analyze_content(
-            content=combined_data,
+            content=combined,
             target="person",
             name=state["linkedin_data"].get("name", "Unknown"),
             schema=PersonProfile,
@@ -146,6 +129,65 @@ class PersonAgent:
         return result["profile"]
 
 
+# news agent
+class NewsState(TypedDict, total=False):
+    topic: str
+    mode: str
+    source: Optional[str]
+    days: int
+    search_results: List[Dict[str, Any]]
+    digest: NewsDigest
+
+
+class NewsAgent:
+    def __init__(self):
+        self.graph = self._build_graph()
+        self.app = self.graph.compile()
+
+    def _build_graph(self):
+        graph = StateGraph(NewsState)
+        graph.add_node("search", self._search_news)
+        graph.add_node("synthesize", self._synthesize)
+        graph.set_entry_point("search")
+        graph.add_edge("search", "synthesize")
+        graph.add_edge("synthesize", END)
+        return graph
+
+    async def _search_news(self, state: NewsState) -> NewsState:
+        topic = state["topic"]
+        mode = state.get("mode", "briefing")
+        source = state.get("source")
+        days = state.get("days", 7)
+
+        results = await news_search(topic=topic, days=days, source=source)
+        # if single_source mode but no source, just keep results
+        state["mode"] = mode
+        state["search_results"] = results
+        return state
+
+    async def _synthesize(self, state: NewsState) -> NewsState:
+        topic = state["topic"]
+        mode = state.get("mode", "briefing")
+        digest = await summarize_news(
+            topic=topic, mode=mode, results=state["search_results"]
+        )
+        state["digest"] = digest
+        return state
+
+    async def research(
+        self,
+        topic: str,
+        mode: str = "briefing",
+        days: int = 7,
+        source: Optional[str] = None,
+    ) -> NewsDigest:
+        out = await self.app.ainvoke(
+            {"topic": topic, "mode": mode, "days": days, "source": source}
+        )
+        return out["digest"]
+
+
 # initialize agents
 company_agent = CompanyAgent()
 person_agent = PersonAgent()
+news_agent = NewsAgent()
