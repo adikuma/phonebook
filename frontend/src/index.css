@@ -2,66 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
-.custom-scrollbar::-webkit-scrollbar {
-  width: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  border-radius: 6px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: transparent;
+:root{
+  --stroke: 255 255 255 / 0.12;
 }
 
-.font-poppins {
-  font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto,
-    'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji',
-    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif;
+.font-poppins{
+  font-family:'Poppins',ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial,'Noto Sans','Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol','Noto Color Emoji',sans-serif;
 }
 
-.fade-bottom-mask {
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    rgba(0,0,0,1) 0%,
-    rgba(0,0,0,1) calc(100% - 40px),
-    rgba(0,0,0,0) 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    rgba(0,0,0,1) 0%,
-    rgba(0,0,0,1) calc(100% - 40px),
-    rgba(0,0,0,0) 100%
-  );
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
+.custom-scrollbar{scrollbar-width:thin;scrollbar-color:transparent transparent}
+.custom-scrollbar::-webkit-scrollbar{width:10px}
+.custom-scrollbar::-webkit-scrollbar-track{background:transparent}
+.custom-scrollbar::-webkit-scrollbar-thumb{background-color:transparent;border-radius:6px;border:2px solid transparent;background-clip:padding-box}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover{background-color:transparent}
+
+.fade-bottom-mask{
+  -webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,1) 0%,rgba(0,0,0,1) calc(100% - 56px),rgba(0,0,0,0) 100%);
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,1) 0%,rgba(0,0,0,1) calc(100% - 56px),rgba(0,0,0,0) 100%);
+  -webkit-mask-size:100% 100%;mask-size:100% 100%;
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat
 }
 
-.clamp-1 {
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+.glass{@apply bg-white/5 backdrop-blur-xl border border-white/10}
+.glass-2{@apply bg-white/5 backdrop-blur-md border border-white/10}
+
+.btn{@apply inline-flex items-center justify-center rounded-md text-sm px-3 py-2 transition-all duration-200}
+.btn-primary{@apply btn text-white shadow; background:linear-gradient(135deg,#ff8e38 0%,#ff4d00 100%)}
+.btn-primary:hover{filter:brightness(1.05)}
+.btn-ghost{@apply btn bg-transparent border border-white/15 text-slate-200 hover:bg-white/10}
+
+.input{@apply w-full rounded-lg bg-black/30 text-slate-100 placeholder-slate-400 outline-none ring-1 ring-white/10 focus:ring-orange-400/60 transition px-4 py-3}
+
+.segment{@apply relative flex overflow-hidden rounded-lg border border-white/10 bg-black/20 backdrop-blur}
+.segment>button{@apply w-1/2 py-2 text-xs font-medium text-slate-300 transition}
+.segment .thumb{position:absolute;inset-block:0;width:50%;border-radius:.5rem;color:#030712;background:linear-gradient(135deg,#ff8e38 0%,#ff4d00 100%);box-shadow:0 8px 28px rgba(0,0,0,.35);transition:transform .2s}
